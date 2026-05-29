@@ -1,156 +1,139 @@
 package pbo.f01;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persitence;
-
 import pbo.f01.model.ParkingArea;
 import pbo.f01.model.Vehicle;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Lisr;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 /**
  * Driver class utama
- * Nama: Nikah Suchia Panjaitan 
- * Nim: 12S24041
+ *
+ * Nama : Nikah Suchia Panjaitan
+ * NIM  : 12S24041
  */
-
 public class App {
+
     public static void main(String[] args) {
 
-        EntityManagerFctory emf =
-            Persistence.createEntityManagerFactory("parkit");
-        
-        EntityManager em =
-             emf.createEntityManager();
+        Map<String, ParkingArea> areas = new HashMap<>();
+        Map<String, Vehicle> vehicles = new HashMap<>();
 
-        Scannner scanner = new Scanner(System.in);
+        Scanner scanner = new Scanner(System.in);
 
-        while (scanner hasNextLine()) {
+        while (scanner.hasNextLine()) {
 
-            String input = scanner NextLine();
-            if (input.equals("")) {
+            String input = scanner.nextLine().trim();
+
+            if (input.isEmpty()) {
                 break;
             }
 
             String[] data = input.split("#");
 
-            // tambah area
-            if (data[0].equals("area-add")) {
+            switch (data[0]) {
 
-                String name = data[1];
-                int capacity = Integer.parseInt(data[2]);
-                String allowedType = data[3];
+                case "area-add":
 
-                ParkingArea area =
-                        new ParkingArea(name, capacity, allowedType);
+                    areas.put(
+                            data[1],
+                            new ParkingArea(
+                                    data[1],
+                                    Integer.parseInt(data[2]),
+                                    data[3]
+                            )
+                    );
+                    break;
 
-                em.getTransaction().begin();
-                em.persist(area);
-                em.getTransaction().commit();
-            }
+                case "vehicle-add":
 
-            // tambah vehicle
-            else if (data[0].equals("vehicle-add")) {
+                    vehicles.put(
+                            data[1],
+                            new Vehicle(
+                                    data[1],
+                                    data[2],
+                                    data[3]
+                            )
+                    );
+                    break;
 
-                String plate = data[1];
-                String owner = data[2];
-                String type = data[3];
+                case "park":
 
-                Vehicle vehicle =
-                        new Vehicle(plate, owner, type);
+                    String plate = data[1];
+                    String areaName = data[2];
 
-                em.getTransaction().begin();
-                em.persist(vehicle);
-                em.getTransaction().commit();
-            }
+                    Vehicle vehicle = vehicles.get(plate);
+                    ParkingArea area = areas.get(areaName);
 
-            // park vehicle
-             else if (data[0].equals("park")) {
+                    if (vehicle != null && area != null) {
 
-                String plate = data[1];
-                String areaName = data[2];
+                        if (vehicle.getType().equals(area.getAllowedType())) {
 
-                Vehicle vehicle =
-                        em.find(Vehicle.class, plate);
+                            if (area.getVehicles().size() < area.getCapacity()) {
 
-                ParkingArea area =
-                        em.find(ParkingArea.class, areaName);
+                                boolean alreadyParked = false;
 
-                if (vehicle != null && area != null) {
+                                for (Vehicle v : area.getVehicles()) {
+                                    if (v.getPlateNumber().equals(vehicle.getPlateNumber())) {
+                                        alreadyParked = true;
+                                        break;
+                                    }
+                                }
 
-                    if (vehicle.getType()
-                            .equals(area.getAllowedType())) {
-
-                        if (area.getVehicles().size()
-                                < area.getCapacity()) {
-
-                            em.getTransaction().begin();
-                            
-                            area.getVehicles().add(vehicle);
-
-                            em.merge(area);
-
-                            em.getTransaction().commit();
+                                if (!alreadyParked) {
+                                    area.getVehicles().add(vehicle);
+                                }
+                            }
                         }
                     }
-                }
-            }
 
-            //display all
-            else if (data[0].equals ("display-all")) {
+                    break;
 
-                List<ParkingArea> areas =
-                        em.createQuery(
-                                "SELECT a FROM ParkingArea a",
-                                ParkingArea.class
-                        ).getResultList();
+                case "display-all":
 
-                Collections.sort(areas,
-                        Comparator.comparing(ParkingArea::getName));
+                    List<ParkingArea> areaList =
+                            new ArrayList<>(areas.values());
 
-                for (ParkingArea area : areas) {
-
-                    System.out.println(
-                            area.getName() + " "
-                            + area.getAllowedType() + " "
-                            + area.getCapacity() + "|"
-                            + area.getVehicles().size()
+                    areaList.sort(
+                            Comparator.comparing(ParkingArea::getName)
                     );
 
-                 List<Vehicle> vehicles =
-                            area.getVehicles();
-
-                    Collections.sort(vehicles,
-                            Comparator.comparing(
-                                    Vehicle::getPlateNumber));
-
-                    for (Vehicle vehicle : vehicles) {
+                    for (ParkingArea parkingArea : areaList) {
 
                         System.out.println(
-                                vehicle.getPlateNumber() + " "
-                                + vehicle.getOwner() + " "
-                                + vehicle.getType()
+                                parkingArea.getName() + " "
+                                        + parkingArea.getAllowedType() + " "
+                                        + parkingArea.getCapacity() + "|"
+                                        + parkingArea.getVehicles().size()
                         );
+
+                        List<Vehicle> parkedVehicles =
+                                new ArrayList<>(parkingArea.getVehicles());
+
+                        parkedVehicles.sort(
+                                Comparator.comparing(
+                                        Vehicle::getPlateNumber
+                                )
+                        );
+
+                        for (Vehicle parkedVehicle : parkedVehicles) {
+
+                            System.out.println(
+                                    parkedVehicle.getPlateNumber() + " "
+                                            + parkedVehicle.getOwner() + " "
+                                            + parkedVehicle.getType()
+                            );
+                        }
                     }
-                }
+
+                    break;
             }
         }
 
         scanner.close();
-        em.close();
-        emf.close();
-     }
-
-
-
-
- }
-
-
-
-
-       
+    }
+}
